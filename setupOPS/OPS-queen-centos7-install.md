@@ -1,13 +1,5 @@
 # Các bước cài đặt Openstack Queen trên CentOS 7
 
-### Mô hình
-
-<img src="..\images\OPS-2node-queens.png">
-
-## IP planning
-
-<img src="..\images\ip-planing-queen.png">
-
 # I. Cài đặt môi trường
 ## 1. Cài đặt cơ bản
 ### 1.1. Trên node Controller
