@@ -19,34 +19,12 @@ hostnamectl set-hostname controller1
 bash
 ```
 
-Thiết lập IP
-```
-nmcli con modify eth0 ipv4.addresses 10.10.34.162/24
-nmcli con modify eth0 ipv4.gateway 10.10.34.1
-nmcli con modify eth0 ipv4.dns 8.8.8.8
-nmcli con modify eth0 ipv4.method manual
-nmcli con modify eth0 connection.autoconnect yes
-
-nmcli con modify eth1 ipv4.addresses 10.10.31.162/24
-nmcli con modify eth1 ipv4.method manual
-nmcli con modify eth1 connection.autoconnect yes
-
-
-nmcli con modify eth2 ipv4.addresses 10.10.35.162/24
-nmcli con modify eth2 ipv4.method manual
-nmcli con modify eth2 connection.autoconnect yes
-```
-
 Disable tường lửa và Selinux
 ```
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 systemctl disable firewalld
 systemctl stop firewalld
-systemctl stop NetworkManager
-systemctl disable NetworkManager
-systemctl enable network
-systemctl start network
 ```
 
 Cấu hình các mode sysctl
@@ -73,8 +51,8 @@ sysctl -p
 
 Khai báo file hosts:
 ```
-echo "10.10.34.162 controller1" >> /etc/hosts
-echo "10.10.34.163 compute1" >> /etc/hosts
+echo "192.168.254.128 controller1" >> /etc/hosts
+echo "192.168.254.158 compute1" >> /etc/hosts
 ```
 
 Khai báo repo và cài đặt các gói cho OPS-Queens:
@@ -90,7 +68,10 @@ Cài đặt các gói cần thiết
 ```
 yum -y install centos-release-openstack-queens
 yum -y install crudini wget vim
-yum -y install python-openstackclient openstack-selinux python2-PyMySQL
+yum -y install openstack-selinux python2-PyMySQL
+sudo yum -y install python3-devel python3-pip
+sudo pip3 install --upgrade pip
+sudo pip3 install python-openstackclient
 ```
 
 Reboot server
@@ -107,34 +88,12 @@ hostnamectl set-hostname compute1
 bash
 ```
 
-Thiết lập IP
-```
-nmcli con modify eth0 ipv4.addresses 10.10.34.163/24
-nmcli con modify eth0 ipv4.gateway 10.10.34.1
-nmcli con modify eth0 ipv4.dns 8.8.8.8
-nmcli con modify eth0 ipv4.method manual
-nmcli con modify eth0 connection.autoconnect yes
-
-nmcli con modify eth1 ipv4.addresses 10.10.31.163/24
-nmcli con modify eth1 ipv4.method manual
-nmcli con modify eth1 connection.autoconnect yes
-
-
-nmcli con modify eth2 ipv4.addresses 10.10.35.163/24
-nmcli con modify eth2 ipv4.method manual
-nmcli con modify eth2 connection.autoconnect yes
-```
-
 Disable tường lửa và Selinux
 ```
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 systemctl disable firewalld
 systemctl stop firewalld
-systemctl stop NetworkManager
-systemctl disable NetworkManager
-systemctl enable network
-systemctl start network
 ```
 
 Cấu hình các mode sysctl
@@ -159,15 +118,18 @@ sysctl -p
 
 Khai báo file hosts:
 ```
-echo "10.10.34.162 controller1" >> /etc/hosts
-echo "10.10.34.163 compute1" >> /etc/hosts
+echo "192.168.254.128 controller1" >> /etc/hosts
+echo "192.168.254.158 compute1" >> /etc/hosts
 ```
 
 Cài đặt các package cho OpenStack Queens
 ```
 yum -y install centos-release-openstack-queens
 yum -y install crudini wget vim
-yum -y install python-openstackclient openstack-selinux python2-PyMySQL
+yum -y install openstack-selinux python2-PyMySQL
+sudo yum -y install python3-devel python3-pip
+sudo pip3 install --upgrade pip
+sudo pip3 install python-openstackclient
 ```
 
 Reboot server
@@ -220,7 +182,7 @@ sed -i s'/server 3.centos.pool.ntp.org iburst/#server 3.centos.pool.ntp.org ibur
 
 Để cho phép các node compute kết nối với chrony trên node controller, ta sẽ sửa file cấu hình cho subnet chung của các node:
 ```
-sed -i s'|#allow 192.168.0.0/16|allow 10.10.34.0/24|'g /etc/chrony.conf
+sed -i s'|#allow 192.168.0.0/16|allow 192.168.254.0/24|'g /etc/chrony.conf
 ```
 
 Khởi động lại chrony sau khi sửa file cấu hình
@@ -260,7 +222,7 @@ Các node compute sẽ đồng bộ thời gian từ node `controller1`.
 
 Sửa file cấu hình như sau:
 ```
-sed -i 's/server 0.centos.pool.ntp.org iburst/server 10.10.34.162 iburst/g' /etc/chrony.conf
+sed -i 's/server 0.centos.pool.ntp.org iburst/server 192.168.254.128 iburst/g' /etc/chrony.conf
 
 sed -i s'/server 1.centos.pool.ntp.org iburst/#server 1.centos.pool.ntp.org iburst/'g /etc/chrony.conf
 sed -i s'/server 2.centos.pool.ntp.org iburst/#server 2.centos.pool.ntp.org iburst/'g /etc/chrony.conf
@@ -284,12 +246,13 @@ chronyc sources
 ```
 
 ## 3. Cài đặt và cấu hình Memcached
+
 > Thực hiện trên node Controller
 
 Cài đặt và cấu hình memcache
 ```
 yum install -y memcached
-sed -i "s/-l 127.0.0.1,::1/-l 10.10.34.162 /g" /etc/sysconfig/memcached
+sed -i "s/-l 127.0.0.1,::1/-l 192.168.254.128 /g" /etc/sysconfig/memcached
 ```
 
 Restart service memcached
@@ -315,7 +278,7 @@ Cấu hình mysql cho OpenStack
 ```
 cat << EOF > /etc/my.cnf.d/openstack.cnf
 [mysqld]
-bind-address = 10.10.34.162 
+bind-address = 192.168.254.128
 default-storage-engine = innodb
 innodb_file_per_table
 max_connections = 4096
@@ -391,10 +354,10 @@ Cấu hình bind port
 ```
 cp /usr/share/keystone/wsgi-keystone.conf /etc/httpd/conf.d/
 
-sed -i -e 's/VirtualHost \*/VirtualHost 10.10.34.162/g' /etc/httpd/conf.d/wsgi-keystone.conf
-sed -i -e 's/Listen 5000/Listen 10.10.34.162:5000/g' /etc/httpd/conf.d/wsgi-keystone.conf
-sed -i -e 's/Listen 35357/Listen 10.10.34.162:35357/g' /etc/httpd/conf.d/wsgi-keystone.conf
-sed -i -e 's/^Listen.*/Listen 10.10.34.162:80/g' /etc/httpd/conf/httpd.conf
+sed -i -e 's/VirtualHost \*/VirtualHost 192.168.254.128/g' /etc/httpd/conf.d/wsgi-keystone.conf
+sed -i -e 's/Listen 5000/Listen 192.168.254.128:5000/g' /etc/httpd/conf.d/wsgi-keystone.conf
+sed -i -e 's/Listen 35357/Listen 192.168.254.128:35357/g' /etc/httpd/conf.d/wsgi-keystone.conf
+sed -i -e 's/^Listen.*/Listen 192.168.254.128/g' /etc/httpd/conf/httpd.conf
 ```
 
 Cấu hình keystone
@@ -410,8 +373,10 @@ cat << EOF >> /etc/keystone/keystone.conf
 [catalog]
 [cors]
 [credential]
+
 [database]
-connection = mysql+pymysql://keystone:Welcome123@10.10.34.162/keystone
+connection = mysql+pymysql://keystone:Welcome123@192.168.254.128/keystone
+
 [domain_config]
 [endpoint_filter]
 [endpoint_policy]
@@ -427,6 +392,7 @@ connection = mysql+pymysql://keystone:Welcome123@10.10.34.162/keystone
 [oauth1]
 [oslo_messaging_amqp]
 [oslo_messaging_kafka]
+
 [oslo_messaging_notifications]
 driver = messagingv2
 
@@ -449,8 +415,10 @@ amqp_durable_queues= true
 [security_compliance]
 [shadow_users]
 [signing]
+
 [token]
 provider = fernet
+
 [tokenless_auth]
 [trust]
 EOF
@@ -475,9 +443,9 @@ keystone-manage credential_setup --keystone-user keystone --keystone-group keyst
 Bootstrap keystone
 ```
 keystone-manage bootstrap --bootstrap-password Welcome123 \
---bootstrap-admin-url http://10.10.34.162:5000/v3/ \
---bootstrap-internal-url http://10.10.34.162:5000/v3/ \
---bootstrap-public-url http://10.10.34.162:5000/v3/ \
+--bootstrap-admin-url http://192.168.254.128:5000/v3/ \
+--bootstrap-internal-url http://192.168.254.128:5000/v3/ \
+--bootstrap-public-url http://192.168.254.128:5000/v3/ \
 --bootstrap-region-id RegionOne
 ```
 
@@ -494,7 +462,7 @@ export OS_PASSWORD=Welcome123
 export OS_PROJECT_NAME=admin
 export OS_USER_DOMAIN_NAME=Default
 export OS_PROJECT_DOMAIN_NAME=Default
-export OS_AUTH_URL=http://10.10.34.162:35357/v3
+export OS_AUTH_URL=http://192.168.254.128:35357/v3
 export OS_IDENTITY_API_VERSION=3
 ```
 
@@ -523,7 +491,7 @@ unset OS_AUTH_URL OS_PASSWORD
 
 Tạo token
 ```
-openstack --os-auth-url http://10.10.34.162:35357/v3 \
+openstack --os-auth-url http://192.168.254.128:35357/v3 \
 --os-project-domain-name Default --os-user-domain-name Default \
 --os-project-name admin --os-username admin token issue
 ```
@@ -537,7 +505,7 @@ export OS_USER_DOMAIN_NAME=Default
 export OS_PROJECT_NAME=admin
 export OS_USERNAME=admin
 export OS_PASSWORD=Welcome123
-export OS_AUTH_URL=http://10.10.34.162:5000/v3
+export OS_AUTH_URL=http://192.168.254.128:5000/v3
 export OS_IDENTITY_API_VERSION=3
 export OS_IMAGE_API_VERSION=2
 EOF
@@ -550,7 +518,7 @@ export OS_USER_DOMAIN_NAME=Default
 export OS_PROJECT_NAME=demo
 export OS_USERNAME=demo
 export OS_PASSWORD=Welcome123
-export OS_AUTH_URL=http://10.10.34.162:5000/v3
+export OS_AUTH_URL=http://192.168.254.128:5000/v3
 export OS_IDENTITY_API_VERSION=3
 export OS_IMAGE_API_VERSION=2
 EOF
@@ -589,9 +557,9 @@ openstack service create --name glance --description "OpenStack Image" image
 
 Tạo endpoint
 ```
-openstack endpoint create --region RegionOne image public http://10.10.34.162:9292
-openstack endpoint create --region RegionOne image admin http://10.10.34.162:9292
-openstack endpoint create --region RegionOne image internal http://10.10.34.162:9292
+openstack endpoint create --region RegionOne image public http://192.168.254.128:9292
+openstack endpoint create --region RegionOne image admin http://192.168.254.128:9292
+openstack endpoint create --region RegionOne image internal http://192.168.254.128:9292
 ```
 
 Cài packages
@@ -606,20 +574,24 @@ rm -rf /etc/glance/glance-api.conf
 
 cat << EOF >> /etc/glance/glance-api.conf
 [DEFAULT]
-bind_host = 10.10.34.162 
-registry_host = 10.10.34.162 
+bind_host = 192.168.254.128
+registry_host = 192.168.254.128
 [cors]
+
 [database]
-connection = mysql+pymysql://glance:Welcome123@10.10.34.162/glance
+connection = mysql+pymysql://glance:Welcome123@192.168.254.128/glance
+
 [glance_store]
 stores = file,http
 default_store = file
 filesystem_store_datadir = /var/lib/glance/images/
+
 [image_format]
+
 [keystone_authtoken]
-auth_uri = http://10.10.34.162:5000
-auth_url = http://10.10.34.162:5000
-memcached_servers = 10.10.34.162:11211
+auth_uri = http://192.168.254.128:5000
+auth_url = http://192.168.254.128:5000
+memcached_servers = 192.168.254.128:11211
 auth_type = password
 project_domain_name = Default
 user_domain_name = Default
@@ -627,6 +599,7 @@ project_name = service
 username = glance
 password = Welcome123
 region_name = RegionOne
+
 [matchmaker_redis]
 [oslo_concurrency]
 [oslo_messaging_amqp]
@@ -643,8 +616,10 @@ amqp_durable_queues= true
 [oslo_messaging_zmq]
 [oslo_middleware]
 [oslo_policy]
+
 [paste_deploy]
 flavor = keystone
+
 [profiler]
 [store_type_location_strategy]
 [task]
@@ -659,13 +634,15 @@ rm -rf /etc/glance/glance-registry.conf
 
 cat << EOF >> /etc/glance/glance-registry.conf
 [DEFAULT]
-bind_host = 10.10.34.162 
+bind_host = 192.168.254.128
+
 [database]
 connection = mysql+pymysql://glance:Welcome123@10.10.34.162/glance
+
 [keystone_authtoken]
-auth_uri = http://10.10.34.162:5000
-auth_url = http://10.10.34.162:5000
-memcached_servers = 10.10.34.162 
+auth_uri = http://192.168.254.128:5000
+auth_url = http://192.168.254.128:5000
+memcached_servers = 192.168.254.128
 auth_type = password
 project_domain_name = Default
 user_domain_name = Default
@@ -673,9 +650,11 @@ project_name = service
 username = glance
 password = Welcome123
 region_name = RegionOne
+
 [matchmaker_redis]
 [oslo_messaging_amqp]
 [oslo_messaging_kafka]
+
 [oslo_messaging_notifications]
 driver = messagingv2
 
@@ -687,6 +666,7 @@ amqp_durable_queues= true
 
 [oslo_messaging_zmq]
 [oslo_policy]
+
 [paste_deploy]
 flavor = keystone
 [profiler]
@@ -757,17 +737,17 @@ openstack user create --domain default --password Welcome123 nova
 openstack role add --project service --user nova admin
 openstack service create --name nova --description "OpenStack Compute" compute
 
-openstack endpoint create --region RegionOne compute public http://10.10.34.162:8774/v2.1
-openstack endpoint create --region RegionOne compute admin http://10.10.34.162:8774/v2.1
-openstack endpoint create --region RegionOne compute internal http://10.10.34.162:8774/v2.1
+openstack endpoint create --region RegionOne compute public http://192.168.254.128:8774/v2.1
+openstack endpoint create --region RegionOne compute admin http://192.168.254.128:8774/v2.1
+openstack endpoint create --region RegionOne compute internal http://192.168.254.128:8774/v2.1
 
 openstack user create --domain default --password Welcome123 placement
 openstack role add --project service --user placement admin
 openstack service create --name placement --description "Placement API" placement
 
-openstack endpoint create --region RegionOne placement public http://10.10.34.162:8778
-openstack endpoint create --region RegionOne placement admin http://10.10.34.162:8778
-openstack endpoint create --region RegionOne placement internal http://10.10.34.162:8778
+openstack endpoint create --region RegionOne placement public http://192.168.254.128:8778
+openstack endpoint create --region RegionOne placement admin http://192.168.254.128:8778
+openstack endpoint create --region RegionOne placement internal http://192.168.254.128:8778
 ```
 
 Tải packages
@@ -782,25 +762,31 @@ rm -rf /etc/nova/nova.conf
 
 cat << EOF >> /etc/nova/nova.conf
 [DEFAULT]
-my_ip = 10.10.34.162 
+my_ip = 192.168.254.128 
 enabled_apis = osapi_compute,metadata
 use_neutron = True
-osapi_compute_listen=10.10.34.162 
-metadata_host=10.10.34.162 
-metadata_listen=10.10.34.162 
+osapi_compute_listen=192.168.254.128
+metadata_host=192.168.254.128
+metadata_listen=192.168.254.128
 metadata_listen_port=8775
 firewall_driver = nova.virt.firewall.NoopFirewallDriver
-transport_url = rabbit://openstack:Welcome123@10.10.34.162:5672
+transport_url = rabbit://openstack:Welcome123@192.168.254.128:5672
+
 [api]
 auth_strategy = keystone
+
 [api_database]
-connection = mysql+pymysql://nova:Welcome123@10.10.34.162/nova_api
+connection = mysql+pymysql://nova:Welcome123@192.168.254.128/nova_api
+
 [barbican]
+
 [cache]
 backend = oslo_cache.memcache_pool
 enabled = true
-memcache_servers = 10.10.34.162:11211
+memcache_servers = 192.168.254.128:11211
+
 [cells]
+
 [cinder]
 os_region_name = RegionOne
 [compute]
@@ -810,12 +796,12 @@ os_region_name = RegionOne
 [cors]
 [crypto]
 [database]
-connection = mysql+pymysql://nova:Welcome123@10.10.34.162/nova
+connection = mysql+pymysql://nova:Welcome123@192.168.254.128/nova
 [devices]
 [ephemeral_storage_encryption]
 [filter_scheduler]
 [glance]
-api_servers = http://10.10.34.162:9292
+api_servers = http://192.168.254.128:9292
 [guestfs]
 [healthcheck]
 [hyperv]
@@ -823,8 +809,8 @@ api_servers = http://10.10.34.162:9292
 [key_manager]
 [keystone]
 [keystone_authtoken]
-auth_url = http://10.10.34.162:5000/v3
-memcached_servers = 10.10.34.162:11211
+auth_url = http://192.168.254.128:5000/v3
+memcached_servers = 192.168.254.128:11211
 auth_type = password
 project_domain_name = default
 user_domain_name = default
@@ -862,7 +848,7 @@ project_domain_name = Default
 project_name = service
 auth_type = password
 user_domain_name = Default
-auth_url = http://10.10.34.162:5000/v3
+auth_url = http://192.168.254.128:5000/v3
 username = placement
 password = Welcome123
 [quota]
@@ -878,11 +864,11 @@ discover_hosts_in_cells_interval = 300
 [vendordata_dynamic_auth]
 [vmware]
 [vnc]
-novncproxy_host=10.10.34.162 
+novncproxy_host=192.168.254.128
 enabled = true
-vncserver_listen = 10.10.34.162 
-vncserver_proxyclient_address = 10.10.34.162 
-novncproxy_base_url = http://10.10.34.162:6080/vnc_auto.html
+vncserver_listen = 192.168.254.128
+vncserver_proxyclient_address = 192.168.254.128
+novncproxy_base_url = http://192.168.254.128:6080/vnc_auto.html
 [workarounds]
 [wsgi]
 [xenserver]
@@ -908,8 +894,8 @@ EOF
 
 Cấu hình bind port cho nova-placement
 ```
-sed -i -e 's/VirtualHost \*/VirtualHost 10.10.34.162/g' /etc/httpd/conf.d/00-nova-placement-api.conf
-sed -i -e 's/Listen 8778/Listen 10.10.34.162:8778/g' /etc/httpd/conf.d/00-nova-placement-api.conf
+sed -i -e 's/VirtualHost \*/VirtualHost 192.168.254.128/g' /etc/httpd/conf.d/00-nova-placement-api.conf
+sed -i -e 's/Listen 8778/Listen 192.168.254.128/g' /etc/httpd/conf.d/00-nova-placement-api.conf
 ```
 
 Restart httpd
@@ -976,7 +962,7 @@ rm -rf /etc/nova/nova.conf
 cat << EOF >> /etc/nova/nova.conf 
 [DEFAULT]
 enabled_apis = osapi_compute,metadata
-transport_url = rabbit://openstack:Welcome123@10.10.34.162:5672
+transport_url = rabbit://openstack:Welcome123@192.168.254.128:5672
 use_neutron = True
 firewall_driver = nova.virt.firewall.NoopFirewallDriver
 [api]
@@ -998,7 +984,7 @@ os_region_name = RegionOne
 [ephemeral_storage_encryption]
 [filter_scheduler]
 [glance]
-api_servers = http://10.10.34.162:9292
+api_servers = http://192.168.254.128:9292
 [guestfs]
 [healthcheck]
 [hyperv]
@@ -1006,8 +992,8 @@ api_servers = http://10.10.34.162:9292
 [key_manager]
 [keystone]
 [keystone_authtoken]
-auth_url = http://10.10.34.162:5000/v3
-memcached_servers = 10.10.34.162:11211
+auth_url = http://192.168.254.128:5000/v3
+memcached_servers = 192.168.254.128:11211
 auth_type = password
 project_domain_name = default
 user_domain_name = default
@@ -1021,8 +1007,8 @@ virt_type = kvm
 [metrics]
 [mks]
 [neutron]
-url = http://10.10.34.162:9696
-auth_url = http://10.10.34.162:35357
+url = http://192.168.254.128:9696
+auth_url = http://192.168.254.128:35357
 auth_type = password
 project_domain_name = default
 user_domain_name = default
@@ -1054,7 +1040,7 @@ project_domain_name = Default
 project_name = service
 auth_type = password
 user_domain_name = Default
-auth_url = http://10.10.34.162:5000/v3
+auth_url = http://192.168.254.128:5000/v3
 username = placement
 password = Welcome123
 [quota]
@@ -1072,8 +1058,8 @@ discover_hosts_in_cells_interval = 300
 [vnc]
 enabled = True
 server_listen = 0.0.0.0
-server_proxyclient_address = 10.10.34.163
-novncproxy_base_url = http://10.10.34.162:6080/vnc_auto.html
+server_proxyclient_address = 192.168.254.158
+novncproxy_base_url = http://192.168.254.128:6080/vnc_auto.html
 [workarounds]
 [wsgi]
 [xenserver]
@@ -1121,9 +1107,9 @@ openstack user create --domain default --password Welcome123 neutron
 openstack role add --project service --user neutron admin
 openstack service create --name neutron --description "OpenStack Networking" network
 
-openstack endpoint create --region RegionOne network public http://10.10.34.162:9696
-openstack endpoint create --region RegionOne network internal http://10.10.34.162:9696
-openstack endpoint create --region RegionOne network admin http://10.10.34.162:9696
+openstack endpoint create --region RegionOne network public http://192.168.254.128:9696
+openstack endpoint create --region RegionOne network internal http://192.168.254.128:9696
+openstack endpoint create --region RegionOne network admin http://192.168.254.128:9696
 ```
 
 Cài packages
@@ -1141,10 +1127,10 @@ rm -rf /etc/neutron/neutron.conf
 
 cat << EOF >> /etc/neutron/neutron.conf
 [DEFAULT]
-bind_host = 10.10.34.162 
+bind_host = 192.168.254.128
 core_plugin = ml2
 service_plugins = router
-transport_url = rabbit://openstack:Welcome123@10.10.34.162:5672
+transport_url = rabbit://openstack:Welcome123@192.168.254.128:5672
 auth_strategy = keystone
 notify_nova_on_port_status_changes = true
 notify_nova_on_port_data_changes = true
@@ -1153,11 +1139,11 @@ dhcp_agents_per_network = 2
 [agent]
 [cors]
 [database]
-connection = mysql+pymysql://neutron:Welcome123@10.10.34.162/neutron
+connection = mysql+pymysql://neutron:Welcome123@192.168.254.128/neutron
 [keystone_authtoken]
-auth_uri = http://10.10.34.162:5000
-auth_url = http://10.10.34.162:35357
-memcached_servers = 10.10.34.162:11211
+auth_uri = http://192.168.254.128:5000
+auth_url = http://192.168.254.128:35357
+memcached_servers = 192.168.254.128:11211
 auth_type = password
 project_domain_name = default
 user_domain_name = default
@@ -1167,7 +1153,7 @@ password = Welcome123
 region_name = RegionOne
 [matchmaker_redis]
 [nova]
-auth_url = http://10.10.34.162:35357
+auth_url = http://192.168.254.128:35357
 auth_type = password
 project_domain_name = default
 user_domain_name = default
@@ -1236,7 +1222,7 @@ enable_security_group = true
 firewall_driver = neutron.agent.linux.iptables_firewall.IptablesFirewallDriver
 [vxlan]
 enable_vxlan = true
-local_ip = 10.10.35.162
+local_ip = 192.168.254.128
 l2_population = true
 EOF
 ```
@@ -1257,8 +1243,8 @@ EOF
 Chỉnh sửa file `/etc/nova/nova.conf`
 ```
 [neutron]
-url = http://10.10.34.162:9696
-auth_url = http://10.10.34.162:35357
+url = http://192.168.254.128:9696
+auth_url = http://192.168.254.128:35357
 auth_type = password
 project_domain_name = default
 user_domain_name = default
@@ -1322,15 +1308,15 @@ rm -rf /etc/neutron/neutron.conf
 
 cat << EOF >> /etc/neutron/neutron.conf
 [DEFAULT]
-transport_url = rabbit://openstack:Welcome123@10.10.34.162:5672
+transport_url = rabbit://openstack:Welcome123@192.168.254.128:5672
 auth_strategy = keystone
 [agent]
 [cors]
 [database]
 [keystone_authtoken]
-auth_uri = http://10.10.34.162:5000
-auth_url = http://10.10.34.162:35357
-memcached_servers = 10.10.34.162:11211
+auth_uri = http://192.168.254.128:5000
+auth_url = http://192.168.254.128:35357
+memcached_servers = 192.168.254.128:11211
 auth_type = password
 project_domain_name = default
 user_domain_name = default
@@ -1376,7 +1362,7 @@ enable_security_group = true
 firewall_driver = neutron.agent.linux.iptables_firewall.IptablesFirewallDriver
 [vxlan]
 enable_vxlan = true
-local_ip = 10.10.35.163
+local_ip = 192.168.254.158
 l2_population = true
 EOF
 ```
@@ -1404,7 +1390,7 @@ rm -rf /etc/neutron/metadata_agent.ini
 
 cat << EOF >> /etc/neutron/metadata_agent.ini
 [DEFAULT]
-nova_metadata_host = 10.10.34.162
+nova_metadata_host = 192.168.254.128
 metadata_proxy_shared_secret = Welcome123
 [agent]
 [cache]
@@ -1447,7 +1433,7 @@ touch $filehtml
 cat << EOF >> $filehtml
 <html>
 <head>
-<META HTTP-EQUIV="Refresh" Content="0.5; URL=http://10.10.34.162/dashboard">
+<META HTTP-EQUIV="Refresh" Content="0.5; URL=http://192.168.254.128/dashboard">
 </head>
 <body>
 <center> <h1>Redirecting to OpenStack Dashboard</h1> </center>
@@ -1479,11 +1465,11 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-        'LOCATION': ['10.10.34.162:11211',]
+        'LOCATION': ['192.168.254.128:11211',]
     }
 }
-OPENSTACK_HOST = "10.10.34.162"
-OPENSTACK_KEYSTONE_URL = "http://10.10.34.162:5000/v3"
+OPENSTACK_HOST = "192.168.254.128"
+OPENSTACK_KEYSTONE_URL = "http://192.168.254.128:5000/v3"
 OPENSTACK_KEYSTONE_DEFAULT_ROLE = "user"
 ```
 
@@ -1511,7 +1497,7 @@ Restart lại httpd
 systemctl restart httpd.service memcached.service
 ```
 
-Tiến hành truy cập địa chỉ `10.10.34.162` và đăng nhập bằng tài khoản `admin`/`Welcome123`
+Tiến hành truy cập địa chỉ `192.168.254.128` và đăng nhập bằng tài khoản `admin`/`Welcome123`
 
 <img src="..\images\Screenshot_143.png">
 
@@ -1535,12 +1521,12 @@ openstack service create --name cinderv2 --description "OpenStack Block Storage"
 openstack service create --name cinderv3 --description "OpenStack Block Storage" volumev3
 
 
-openstack endpoint create --region RegionOne volumev2 public http://10.10.34.162:8776/v2/%\(project_id\)s
-openstack endpoint create --region RegionOne volumev2 internal http://10.10.34.162:8776/v2/%\(project_id\)s
-openstack endpoint create --region RegionOne volumev2 admin http://10.10.34.162:8776/v2/%\(project_id\)s
-openstack endpoint create --region RegionOne volumev3 public http://10.10.34.162:8776/v3/%\(project_id\)s
-openstack endpoint create --region RegionOne volumev3 internal http://10.10.34.162:8776/v3/%\(project_id\)s
-openstack endpoint create --region RegionOne volumev3 admin http://10.10.34.162:8776/v3/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev2 public http://192.168.254.128:8776/v2/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev2 internal http://192.168.254.128:8776/v2/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev2 admin http://192.168.254.128:8776/v2/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev3 public http://192.168.254.128:8776/v3/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev3 internal http://192.168.254.128:8776/v3/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev3 admin http://192.168.254.128:8776/v3/%\(project_id\)s
 ```
 
 Tải package
@@ -1597,12 +1583,12 @@ rm -rf /etc/cinder/cinder.conf
 
 cat << EOF >> /etc/cinder/cinder.conf
 [DEFAULT]
-my_ip = 10.10.34.162 
+my_ip = 192.168.254.128
 transport_url = rabbit://openstack:Welcome123@10.10.34.162:5672
 auth_strategy = keystone
-osapi_volume_listen = 10.10.34.162 
+osapi_volume_listen = 192.168.254.128
 enabled_backends = lvm
-glance_api_servers = http://10.10.34.162:9292
+glance_api_servers = http://192.168.254.128:9292
 [backend]
 [backend_defaults]
 [barbican]
@@ -1611,14 +1597,14 @@ glance_api_servers = http://10.10.34.162:9292
 [coordination]
 [cors]
 [database]
-connection = mysql+pymysql://cinder:Welcome123@10.10.34.162/cinder
+connection = mysql+pymysql://cinder:Welcome123@192.168.254.128/cinder
 [fc-zone-manager]
 [healthcheck]
 [key_manager]
 [keystone_authtoken]
-auth_uri = http://10.10.34.162:5000
-auth_url = http://10.10.34.162:35357
-memcached_servers = 10.10.34.162:11211
+auth_uri = http://192.168.254.128:5000
+auth_url = http://192.168.254.128:35357
+memcached_servers = 192.168.254.128:11211
 auth_type = password
 project_domain_id = default
 user_domain_id = default
